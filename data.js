@@ -1,3 +1,31 @@
+/* ── 공유 편집 설정 (선택) ──────────────────────────────
+   Firebase 콘솔에서 복사한 firebaseConfig를 아래에 붙여넣으면
+   편집 내용이 '모든 사람'에게 실시간 반영됩니다.
+   비워두면(null) 기존처럼 각자 브라우저에만 저장됩니다.
+
+   window.FIREBASE_CONFIG = {
+     apiKey: "...",
+     authDomain: "...",
+     databaseURL: "...",   // ← Realtime Database URL (필수)
+     projectId: "...",
+     ...
+   };
+──────────────────────────────────────────────────────── */
+window.FIREBASE_CONFIG = null;
+
+/* ── GitHub 커밋 저장 설정 (선택) ────────────────────────
+   설정하면 편집 모드에 '💾 GitHub 저장' 버튼이 생기고,
+   누르면 이 repo의 data.js가 커밋되어 모두에게 반영됩니다.
+   (버튼 첫 사용 시 GitHub 토큰을 물어봄 — 기기별 1회) */
+window.GITHUB_REPO = { owner:"z88ong9101", repo:"itinerary", path:"data.js", branch:"main" };
+
+/* ── 공용 편집 비밀번호 (선택) ──────────────────────────
+   setup_password.html 도구로 토큰+비밀번호를 암호화해서
+   나온 한 줄을 아래에 붙여넣으면, 편집 시 토큰 대신
+   공용 비밀번호만 입력하면 됩니다. */
+window.GH_TOKEN_ENC = {"s":"yetBX8QqP2MCcwgtquiU0A==","i":"U2Z8olbO6BwHY6lP","d":"zG/NRc6Z4DlJ5/sGSNX+nk5umsnioldksotC5hxVH5unH5EsktBWtBUrCo1GKKEr5b8wiIJaKk/U7fzFYcZOw/IYq5HoAcRsQKIYAgoXudrzPgVNT4J5rivQ3y+pRrzaHUY30Th5fXMhe4XNBg=="};
+
+
 /* =====================================================
    푸꾸옥 여행 일정 데이터
    - 여기만 수정하면 앱(index.html)은 건드릴 필요 없음

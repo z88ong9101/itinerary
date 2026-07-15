@@ -203,10 +203,13 @@
 
 <div id="editbar">
   <button id="resetBtn" hidden>↺ 초기화</button>
+  <button id="commitBtn" hidden>💾 GitHub 저장</button>
   <button id="editBtn">✏️ 편집</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="data.js"></script>
 <script>
 /* ================= 상태 ================= */
@@ -237,7 +240,47 @@ function loadState(){
   }catch(e){ return deepCopy(DEFAULT_DAYS); }
 }
 let DAYS = loadState();
-function save(){ try{ localStorage.setItem('pq_days', JSON.stringify(DAYS)); }catch(e){} }
+
+/* ---- 공유 저장소 (Firebase) ----
+   data.js에 window.FIREBASE_CONFIG가 있으면 모두에게 실시간 공유,
+   없으면 기존처럼 내 브라우저(localStorage)에만 저장 */
+let dbRef = null, lastPushed = '';
+if(window.FIREBASE_CONFIG){
+  try{
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    dbRef = firebase.database().ref('phuquoc/days');
+    dbRef.on('value', snap=>{
+      const v = snap.val();
+      if(!v){ dbRef.set(DAYS); return; }        // DB가 비어있으면 현재 데이터로 초기화
+      const j = JSON.stringify(v);
+      if(j === lastPushed || j === JSON.stringify(DAYS)) return; // 내 변경 에코 무시
+      if(editing){ pendingRemote = v; return; } // 편집 중엔 끝나고 반영
+      applyRemote(v);
+    });
+  }catch(e){ console.warn('Firebase init 실패, 로컬 저장으로 동작:', e); }
+}
+let pendingRemote = null;
+
+function applyRemote(v){
+  const prev = DAYS.map(d=>JSON.stringify(d));
+  DAYS = v;
+  if(typeof sections !== 'undefined' && sections.length){
+    DAYS.forEach((d,di)=>{
+      if(JSON.stringify(d) === prev[di]) return; // 안 바뀐 날은 스킵 (OSRM 재요청 방지)
+      renderDay(di); rebuildMarkers(di); refreshDay(di);
+    });
+    show(activeDay, false);
+  }
+}
+
+function save(){
+  if(dbRef){
+    lastPushed = JSON.stringify(DAYS);
+    dbRef.set(DAYS);
+  } else {
+    try{ localStorage.setItem('pq_days', JSON.stringify(DAYS)); }catch(e){}
+  }
+}
 
 let editing = false, activeDay = 0, placing = null, dragFrom = null;
 
@@ -551,11 +594,104 @@ function setEditing(on){
   });
   editBtn.textContent = on ? '✓ 완료' : '✏️ 편집';
   resetBtn.hidden = !on;
+  document.getElementById('commitBtn').hidden = !(on && window.GITHUB_REPO);
   if(!on && placing){ placing=null; document.body.classList.remove('placing'); }
+  if(!on && pendingRemote){ const v=pendingRemote; pendingRemote=null; applyRemote(v); }
 }
 editBtn.onclick = ()=>setEditing(!editing);
+
+/* ---- GitHub에 data.js 커밋 (원본 갱신 → 모두에게 반영) ---- */
+const commitBtn = document.getElementById('commitBtn');
+
+function buildDataJs(){
+  return '/* 이 파일은 웹 편집기에서 자동 생성됨 */\n'
+    + 'window.FIREBASE_CONFIG = ' + JSON.stringify(window.FIREBASE_CONFIG||null) + ';\n'
+    + 'window.GITHUB_REPO = ' + JSON.stringify(window.GITHUB_REPO||null) + ';\n'
+    + 'window.GH_TOKEN_ENC = ' + JSON.stringify(window.GH_TOKEN_ENC||null) + ';\n'
+    + 'window.DEFAULT_DAYS = ' + JSON.stringify(DAYS, null, 2) + ';\n';
+}
+/* 공용 비밀번호로 암호화된 토큰 복호화 (PBKDF2 + AES-GCM) */
+const b64d = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+async function decryptToken(enc, pw){
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt:b64d(enc.s), iterations:200000, hash:'SHA-256'},
+    km, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const buf = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64d(enc.i)}, key, b64d(enc.d));
+  return new TextDecoder().decode(buf);
+}
+let ghTokenCache = null;
+try{ ghTokenCache = sessionStorage.getItem('gh_tk'); }catch(e){}
+async function getToken(force){
+  if(ghTokenCache && !force) return ghTokenCache;
+  if(window.GH_TOKEN_ENC){
+    for(;;){
+      const pw = prompt('편집 비밀번호를 입력하세요');
+      if(pw === null) return null;
+      try{
+        ghTokenCache = await decryptToken(window.GH_TOKEN_ENC, pw.trim());
+        try{ sessionStorage.setItem('gh_tk', ghTokenCache); }catch(e){}
+        return ghTokenCache;
+      }catch(e){ alert('비밀번호가 틀렸습니다.'); }
+    }
+  }
+  // (비번 설정이 없으면) 개인 토큰 직접 입력 방식
+  let t = null;
+  try{ t = localStorage.getItem('gh_token'); }catch(e){}
+  if(!t || force){
+    t = prompt('GitHub 토큰(fine-grained, Contents 쓰기 권한)을 입력하세요.\n이 기기에만 저장됩니다.');
+    if(t){ t = t.trim(); try{ localStorage.setItem('gh_token', t); }catch(e){} }
+  }
+  ghTokenCache = t;
+  return t;
+}
+async function commitToGitHub(){
+  const cfg = window.GITHUB_REPO;
+  if(!cfg){ alert('data.js에 window.GITHUB_REPO 설정이 필요합니다.'); return; }
+  let token = await getToken(false);
+  if(!token) return;
+  commitBtn.disabled = true; commitBtn.textContent = '저장 중…';
+  try{
+    const api = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path||'data.js'}`;
+    const headers = {
+      'Authorization':'Bearer '+token,
+      'Accept':'application/vnd.github+json',
+      'Content-Type':'application/json'
+    };
+    // 현재 파일 sha 조회
+    let res = await fetch(`${api}?ref=${cfg.branch||'main'}`, {headers});
+    if(res.status===401 || res.status===403){
+      token = await getToken(true);
+      if(!token) throw new Error('토큰 없음');
+      headers['Authorization'] = 'Bearer '+token;
+      res = await fetch(`${api}?ref=${cfg.branch||'main'}`, {headers});
+    }
+    if(!res.ok) throw new Error('파일 조회 실패 ('+res.status+')');
+    const cur = await res.json();
+    // 커밋
+    const content = btoa(unescape(encodeURIComponent(buildDataJs())));
+    const put = await fetch(api, {
+      method:'PUT', headers,
+      body: JSON.stringify({
+        message:'일정 수정 ('+new Date().toLocaleString('ko-KR')+')',
+        content, sha: cur.sha, branch: cfg.branch||'main'
+      })
+    });
+    if(!put.ok) throw new Error('커밋 실패 ('+put.status+')');
+    alert('커밋 완료! 1~2분 후 재배포되면 모두에게 반영됩니다.');
+  }catch(e){
+    alert('저장 실패: '+e.message+'\n토큰 권한(Contents: Read and write)과 repo 설정을 확인하세요.');
+  }finally{
+    commitBtn.disabled = false; commitBtn.textContent = '💾 GitHub 저장';
+  }
+}
+commitBtn.onclick = commitToGitHub;
 resetBtn.onclick = ()=>{
-  if(confirm('수정한 내용을 모두 지우고 원래대로 되돌릴까요?')){
+  const msg = dbRef
+    ? '모두의 화면에서 일정이 data.js 원본으로 되돌아갑니다. 계속할까요?'
+    : '수정한 내용을 모두 지우고 원래대로 되돌릴까요?';
+  if(confirm(msg)){
+    if(dbRef){ lastPushed=''; dbRef.set(deepCopy(DEFAULT_DAYS)); }
     try{ localStorage.removeItem('pq_days'); localStorage.removeItem('pq_edits'); }catch(e){}
     location.reload();
   }
