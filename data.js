@@ -23,7 +23,7 @@ window.GITHUB_REPO = { owner:"z88ong9101", repo:"itinerary", path:"data.js", bra
    setup_password.html 도구로 토큰+비밀번호를 암호화해서
    나온 한 줄을 아래에 붙여넣으면, 편집 시 토큰 대신
    공용 비밀번호만 입력하면 됩니다. */
-window.GH_TOKEN_ENC = null;
+window.GH_TOKEN_ENC = {"s":"yetBX8QqP2MCcwgtquiU0A==","i":"U2Z8olbO6BwHY6lP","d":"zG/NRc6Z4DlJ5/sGSNX+nk5umsnioldksotC5hxVH5unH5EsktBWtBUrCo1GKKEr5b8wiIJaKk/U7fzFYcZOw/IYq5HoAcRsQKIYAgoXudrzPgVNT4J5rivQ3y+pRrzaHUY30Th5fXMhe4XNBg=="};
 
 
 /* =====================================================
