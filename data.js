@@ -35,12 +35,6 @@ window.DEFAULT_DAYS = [
         "lng": 103.9899095,
         "note": "공항에서 차 15분. 애는 바로 재우기, 야식은 어른 교대로.",
         "g": "https://maps.google.com/?cid=9019971226754622219"
-      },
-      {
-        "t": "",
-        "name": "새 일정",
-        "note": "",
-        "nopin": true
       }
     ],
     "tips": [
