@@ -1,18 +1,3 @@
-/* ── 공유 편집 설정 (선택) ──────────────────────────────
-   Firebase 콘솔에서 복사한 firebaseConfig를 아래에 붙여넣으면
-   편집 내용이 '모든 사람'에게 실시간 반영됩니다.
-   비워두면(null) 기존처럼 각자 브라우저에만 저장됩니다.
-
-   window.FIREBASE_CONFIG = {
-     apiKey: "...",
-     authDomain: "...",
-     databaseURL: "...",   // ← Realtime Database URL (필수)
-     projectId: "...",
-     ...
-   };
-──────────────────────────────────────────────────────── */
-window.FIREBASE_CONFIG = null;
-
 /* ── GitHub 커밋 저장 설정 (선택) ────────────────────────
    설정하면 편집 모드에 '💾 GitHub 저장' 버튼이 생기고,
    누르면 이 repo의 data.js가 커밋되어 모두에게 반영됩니다.
@@ -23,7 +8,7 @@ window.GITHUB_REPO = { owner:"z88ong9101", repo:"itinerary", path:"data.js", bra
    setup_password.html 도구로 토큰+비밀번호를 암호화해서
    나온 한 줄을 아래에 붙여넣으면, 편집 시 토큰 대신
    공용 비밀번호만 입력하면 됩니다. */
-window.GH_TOKEN_ENC = {"s":"yetBX8QqP2MCcwgtquiU0A==","i":"U2Z8olbO6BwHY6lP","d":"zG/NRc6Z4DlJ5/sGSNX+nk5umsnioldksotC5hxVH5unH5EsktBWtBUrCo1GKKEr5b8wiIJaKk/U7fzFYcZOw/IYq5HoAcRsQKIYAgoXudrzPgVNT4J5rivQ3y+pRrzaHUY30Th5fXMhe4XNBg=="};
+window.GH_TOKEN_ENC = {"s":"z0Mktqd/8G7f57cEKPxP7A==","i":"niDpG33n790KX54v","d":"qC1oQi/Jrv8W2DJcH96ZStFIVdZChqX8lPxJQeSagmzpP4zlgyvzCS+9EP6dczKvXnSW3EfhFxCg9ln/72RYez7Ss6a7+FoB9GRZsWD2CO0qmUm/Qdt0DB/f7SHmKoDH7U85hXEQQsl7f9I/CA=="};
 
 
 /* =====================================================

@@ -208,8 +208,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script src="data.js"></script>
 <script>
 /* ================= 상태 ================= */
@@ -230,47 +228,8 @@ function loadState(){
 }
 let DAYS = loadState();
 
-/* ---- 공유 저장소 (Firebase) ----
-   data.js에 window.FIREBASE_CONFIG가 있으면 모두에게 실시간 공유,
-   없으면 기존처럼 내 브라우저(localStorage)에만 저장 */
-let dbRef = null, lastPushed = '';
-if(window.FIREBASE_CONFIG){
-  try{
-    firebase.initializeApp(window.FIREBASE_CONFIG);
-    dbRef = firebase.database().ref('phuquoc/days');
-    dbRef.on('value', snap=>{
-      const v = snap.val();
-      if(!v){ dbRef.set(DAYS); return; }        // DB가 비어있으면 현재 데이터로 초기화
-      const j = JSON.stringify(v);
-      if(j === lastPushed || j === JSON.stringify(DAYS)) return; // 내 변경 에코 무시
-      if(editing){ pendingRemote = v; return; } // 편집 중엔 끝나고 반영
-      applyRemote(v);
-    });
-  }catch(e){ console.warn('Firebase init 실패, 로컬 저장으로 동작:', e); }
-}
-let pendingRemote = null;
-
-function applyRemote(v){
-  const prev = DAYS.map(d=>JSON.stringify(d));
-  DAYS = v;
-  if(typeof sections !== 'undefined' && sections.length){
-    DAYS.forEach((d,di)=>{
-      if(JSON.stringify(d) === prev[di]) return; // 안 바뀐 날은 스킵 (OSRM 재요청 방지)
-      renderDay(di); rebuildMarkers(di); refreshDay(di);
-    });
-    show(activeDay, false);
-  }
-}
-
 let dirty = false;
-function save(){
-  dirty = true;
-  if(dbRef){
-    lastPushed = JSON.stringify(DAYS);
-    dbRef.set(DAYS);
-  }
-  // 로컬 저장 없음 — 공유 저장(GitHub 커밋)만 사용
-}
+function save(){ dirty = true; } // 실제 저장은 완료 시 GitHub 커밋으로
 
 let editing = false, activeDay = 0, placing = null, dragFrom = null;
 
@@ -586,7 +545,6 @@ function setEditing(on){
   resetBtn.hidden = !on;
   document.getElementById('commitBtn').hidden = !(on && window.GITHUB_REPO);
   if(!on && placing){ placing=null; document.body.classList.remove('placing'); }
-  if(!on && pendingRemote){ const v=pendingRemote; pendingRemote=null; applyRemote(v); }
 }
 editBtn.onclick = async ()=>{
   if(editing){
@@ -613,7 +571,6 @@ const commitBtn = document.getElementById('commitBtn');
 
 function buildDataJs(){
   return '/* 이 파일은 웹 편집기에서 자동 생성됨 */\n'
-    + 'window.FIREBASE_CONFIG = ' + JSON.stringify(window.FIREBASE_CONFIG||null) + ';\n'
     + 'window.GITHUB_REPO = ' + JSON.stringify(window.GITHUB_REPO||null) + ';\n'
     + 'window.GH_TOKEN_ENC = ' + JSON.stringify(window.GH_TOKEN_ENC||null) + ';\n'
     + 'window.DEFAULT_DAYS = ' + JSON.stringify(DAYS, null, 2) + ';\n';
@@ -697,7 +654,6 @@ async function commitToGitHub(){
 commitBtn.onclick = commitToGitHub;
 resetBtn.onclick = ()=>{
   if(confirm('편집 중인 변경사항을 버리고 원본으로 되돌릴까요?')){
-    if(dbRef){ lastPushed=''; dbRef.set(deepCopy(DEFAULT_DAYS)); }
     location.reload();
   }
 };
