@@ -114,8 +114,11 @@
       height:100vh;overflow:hidden;
     }
     header{grid-column:1/-1;grid-row:1}
-    #map{
+    #mapwrap{
       grid-column:1;grid-row:2/5;
+      min-height:0;
+    }
+    #map{
       height:100%;min-height:0;
       border-bottom:0;border-right:1px solid var(--line);
     }
@@ -130,6 +133,34 @@
   @media (prefers-reduced-motion:reduce){
     .day.on{animation:none}
   }
+  /* 위치 검색바 */
+  #placebar{
+    position:absolute;top:10px;left:10px;right:56px;max-width:420px;
+    z-index:800;
+  }
+  #placebar input{
+    width:100%;padding:11px 40px 11px 14px;box-sizing:border-box;
+    font-family:inherit;font-size:14px;
+    border:1px solid var(--line);border-radius:12px;
+    background:#fff;box-shadow:0 3px 14px rgba(13,50,56,.18);
+  }
+  #placecancel{
+    position:absolute;top:6px;right:6px;width:30px;height:30px;
+    border:0;border-radius:8px;background:none;cursor:pointer;
+    font-size:14px;color:var(--muted);
+  }
+  #placeres{
+    margin-top:6px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;box-shadow:0 3px 14px rgba(13,50,56,.18);
+  }
+  #placeres:empty{display:none}
+  #placeres div{
+    padding:10px 14px;font-size:13px;cursor:pointer;
+    border-bottom:1px solid var(--line);line-height:1.4;
+  }
+  #placeres div:last-child{border-bottom:0}
+  #placeres div:hover{background:var(--paper)}
+
   /* 편집 모드 */
   #editbar{position:fixed;right:14px;bottom:14px;z-index:900;display:flex;gap:8px}
   #editbar button{
@@ -194,7 +225,14 @@
   <div class="sub">2026.10.28 (수) – 11.1 (일) · 어른 6 + 아기 1</div>
 </header>
 
-<div id="map"></div>
+<div id="mapwrap" style="position:relative">
+  <div id="map"></div>
+  <div id="placebar" hidden>
+    <input id="placeq" type="text" placeholder="장소 검색 (또는 지도를 탭)" autocomplete="off">
+    <button id="placecancel" type="button">✕</button>
+    <div id="placeres"></div>
+  </div>
+</div>
 
 <nav id="tabs"></nav>
 <main id="days"></main>
@@ -425,9 +463,8 @@ daysEl.addEventListener('click', e=>{
       [arr[si+1],arr[si]] = [arr[si],arr[si+1]]; commit(di);
     } else if(act==='pin'){
       if(s.nopin){
-        placing = {di,si};
-        document.body.classList.add('placing');
-        tool.textContent = '지도를 탭하세요…';
+        tool.textContent = '지도 탭 또는 검색…';
+        startPlacing(di, si);
       } else {
         s.nopin = true; commit(di);
       }
@@ -448,17 +485,117 @@ daysEl.addEventListener('click', e=>{
   if(rec){ map.flyTo(rec.m.getLatLng(), 13, {duration:.8}); rec.m.openPopup(); }
 });
 
-// 위치 지정: 지도 탭
-map.on('click', e=>{
-  if(!placing) return;
-  const {di,si} = placing;
+// 위치 지정: 지도 탭 또는 장소 검색
+const placebar = document.getElementById('placebar');
+const placeq = document.getElementById('placeq');
+const placeres = document.getElementById('placeres');
+
+function startPlacing(di, si){
+  placing = {di, si};
+  document.body.classList.add('placing');
+  placebar.hidden = false;
+  placeq.value = ''; placeres.innerHTML = '';
+  placeq.focus();
+}
+function endPlacing(){
   placing = null;
   document.body.classList.remove('placing');
+  placebar.hidden = true;
+  placeres.innerHTML = '';
+}
+function applyPlacing(lat, lng){
+  if(!placing) return;
+  const {di,si} = placing;
+  endPlacing();
   const s = DAYS[di].stops[si];
-  s.lat = e.latlng.lat; s.lng = e.latlng.lng;
+  s.lat = lat; s.lng = lng;
   delete s.nopin;
-  s.g = 'https://maps.google.com/?q='+e.latlng.lat.toFixed(6)+','+e.latlng.lng.toFixed(6);
+  s.g = 'https://maps.google.com/?q='+lat.toFixed(6)+','+lng.toFixed(6);
   commit(di);
+}
+map.on('click', e=>{ if(placing) applyPlacing(e.latlng.lat, e.latlng.lng); });
+document.getElementById('placecancel').onclick = endPlacing;
+
+// Nominatim 장소 검색 (푸꾸옥 주변 우선, 무료/키 불필요)
+// OSM에 한글 지명이 거의 없어서, 자주 쓰는 한글 표기는 영문으로 자동 변환 후 검색
+const KO_ALIAS = [
+  ['푸꾸옥','Phu Quoc'], ['빈원더스','VinWonders'], ['빈펄','Vinpearl'],
+  ['사파리','Safari'], ['그랜드월드','Grand World'], ['그랜드 월드','Grand World'],
+  ['선셋타운','Sunset Town'], ['선셋 타운','Sunset Town'],
+  ['케이블카','cable car'], ['혼똔','Hon Thom'], ['혼톤','Hon Thom'],
+  ['즈엉동','Duong Dong'], ['쯔엉동','Duong Dong'], ['함닌','Ham Ninh'],
+  ['켐비치','Khem Beach'], ['껨비치','Khem Beach'], ['사오비치','Sao Beach'],
+  ['롱비치','Long Beach'], ['안터이','An Thoi'], ['호국사','Ho Quoc Pagoda'],
+  ['세일링클럽','Sailing Club'], ['세일링 클럽','Sailing Club'],
+  ['뉴월드','New World Phu Quoc'], ['킹콩마트','King Kong Mart'],
+  ['야시장','night market'], ['시장','market'], ['해변','beach'], ['비치','beach'],
+  ['공항','airport'], ['항구','port'], ['사원','pagoda'], ['절','pagoda'],
+  ['수족관','aquarium'], ['아쿠아리움','aquarium'], ['워터파크','water park'],
+  ['카페','cafe'], ['마트','mart'], ['호텔','hotel'], ['리조트','resort']
+];
+function koToQuery(q){
+  let out = q;
+  KO_ALIAS.forEach(([ko,en])=>{ out = out.split(ko).join(' '+en+' '); });
+  return out.replace(/\s+/g,' ').trim();
+}
+// 구글맵 URL/좌표 붙여넣기 파싱
+// 사용법: 구글맵에서 장소 검색(한글 OK) → 링크 복사 or 좌표 복사 → 여기 붙여넣기
+function parseGoogleInput(t){
+  // !3d10.123!4d103.456 (장소 정확 좌표 — 최우선)
+  let m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if(m) return {lat:+m[1], lng:+m[2], label:'구글맵 장소 좌표'};
+  // ?q=10.123,103.456
+  m = t.match(/[?&]q=(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+  if(m) return {lat:+m[1], lng:+m[2], label:'구글맵 좌표'};
+  // @10.123,103.456 (지도 중심)
+  m = t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if(m) return {lat:+m[1], lng:+m[2], label:'구글맵 화면 중심 좌표'};
+  // 그냥 "10.123, 103.456" 텍스트
+  m = t.match(/^(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$/);
+  if(m) return {lat:+m[1], lng:+m[2], label:'좌표'};
+  return null;
+}
+
+let searchTimer = null;
+placeq.addEventListener('input', ()=>{
+  clearTimeout(searchTimer);
+  const raw = placeq.value.trim();
+  if(raw.length < 2){ placeres.innerHTML=''; return; }
+
+  // 1) 구글맵 링크/좌표 붙여넣기 우선 처리
+  const g = parseGoogleInput(raw);
+  if(g){
+    placeres.innerHTML =
+      `<div data-lat="${g.lat}" data-lng="${g.lng}">📍 ${g.label}: ${g.lat.toFixed(5)}, ${g.lng.toFixed(5)} — 탭해서 지정</div>`;
+    return;
+  }
+  if(/maps\.app\.goo\.gl|goo\.gl\/maps/.test(raw)){
+    placeres.innerHTML =
+      '<div style="cursor:default;color:#889">짧은 공유링크에는 좌표가 없어요.<br>'+
+      '구글맵에서 ① 주소창의 전체 URL을 복사하거나 ② 장소를 길게 눌러 좌표를 복사해서 붙여넣어 주세요.</div>';
+    return;
+  }
+
+  // 2) 일반 텍스트는 Nominatim 검색
+  searchTimer = setTimeout(async ()=>{
+    try{
+      const q = koToQuery(raw);
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=ko'
+        + '&viewbox=103.75,10.45,104.15,9.85&q=' + encodeURIComponent(q);
+      const res = await fetch(url);
+      if(!res.ok) return;
+      const list = await res.json();
+      const hasKo = /[가-힣]/.test(q);
+      placeres.innerHTML = list.length
+        ? list.map(r=>`<div data-lat="${r.lat}" data-lng="${r.lon}">${r.display_name}</div>`).join('')
+        : `<div style="cursor:default;color:#889">검색 결과 없음${hasKo ? ' — 영문으로 검색하거나' : ' —'} 지도를 직접 탭해도 됩니다</div>`;
+    }catch(e){}
+  }, 450);
+});
+placeres.addEventListener('click', e=>{
+  const item = e.target.closest('div[data-lat]');
+  if(!item) return;
+  applyPlacing(+item.dataset.lat, +item.dataset.lng);
 });
 
 // 텍스트 수정 저장
@@ -544,7 +681,7 @@ function setEditing(on){
   editBtn.textContent = on ? '✓ 완료' : '✏️ 편집';
   resetBtn.hidden = !on;
   document.getElementById('commitBtn').hidden = !(on && window.GITHUB_REPO);
-  if(!on && placing){ placing=null; document.body.classList.remove('placing'); }
+  if(!on && placing) endPlacing();
 }
 editBtn.onclick = async ()=>{
   if(editing){
