@@ -16,7 +16,7 @@ window.GITHUB_REPO = { owner:"z88ong9101", repo:"itinerary", path:"data.js", bra
 /* ── 공용 편집 비밀번호 ─────────────────────────────────
    ⚠️ 여기는 repo에 있는 기존 암호문 줄을 유지하세요!
    (이 파일로 통째로 덮으면 아래 null이 기존 암호문을 지워버림) */
-window.GH_TOKEN_ENC = null;
+window.GH_TOKEN_ENC = {"s":"z0Mktqd/8G7f57cEKPxP7A==","i":"niDpG33n790KX54v","d":"qC1oQi/Jrv8W2DJcH96ZStFIVdZChqX8lPxJQeSagmzpP4zlgyvzCS+9EP6dczKvXnSW3EfhFxCg9ln/72RYez7Ss6a7+FoB9GRZsWD2CO0qmUm/Qdt0DB/f7SHmKoDH7U85hXEQQsl7f9I/CA=="};
 
 window.DEFAULT_DAYS = [
   {
