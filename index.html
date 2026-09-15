@@ -503,14 +503,14 @@ function endPlacing(){
   placebar.hidden = true;
   placeres.innerHTML = '';
 }
-function applyPlacing(lat, lng){
+function applyPlacing(lat, lng, g){
   if(!placing) return;
   const {di,si} = placing;
   endPlacing();
   const s = DAYS[di].stops[si];
   s.lat = lat; s.lng = lng;
   delete s.nopin;
-  s.g = 'https://maps.google.com/?q='+lat.toFixed(6)+','+lng.toFixed(6);
+  s.g = g || ('https://maps.google.com/?q='+lat.toFixed(6)+','+lng.toFixed(6));
   commit(di);
 }
 map.on('click', e=>{ if(placing) applyPlacing(e.latlng.lat, e.latlng.lng); });
@@ -565,8 +565,9 @@ placeq.addEventListener('input', ()=>{
   // 1) 구글맵 링크/좌표 붙여넣기 우선 처리
   const g = parseGoogleInput(raw);
   if(g){
+    const keepUrl = /^https?:\/\/\S+google\S*maps|^https?:\/\/maps\.google/.test(raw) ? raw : '';
     placeres.innerHTML =
-      `<div data-lat="${g.lat}" data-lng="${g.lng}">📍 ${g.label}: ${g.lat.toFixed(5)}, ${g.lng.toFixed(5)} — 탭해서 지정</div>`;
+      `<div data-lat="${g.lat}" data-lng="${g.lng}" data-g="${encodeURIComponent(keepUrl)}">📍 ${g.label}: ${g.lat.toFixed(5)}, ${g.lng.toFixed(5)} — 탭해서 지정${keepUrl?' (구글맵 장소 링크 유지)':''}</div>`;
     return;
   }
   if(/maps\.app\.goo\.gl|goo\.gl\/maps/.test(raw)){
@@ -625,7 +626,8 @@ placeq.addEventListener('input', ()=>{
 placeres.addEventListener('click', e=>{
   const item = e.target.closest('div[data-lat]');
   if(!item) return;
-  applyPlacing(+item.dataset.lat, +item.dataset.lng);
+  const g = item.dataset.g ? decodeURIComponent(item.dataset.g) : '';
+  applyPlacing(+item.dataset.lat, +item.dataset.lng, g || undefined);
 });
 
 // 텍스트 수정 저장
