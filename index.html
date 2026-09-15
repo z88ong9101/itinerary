@@ -576,8 +576,38 @@ placeq.addEventListener('input', ()=>{
     return;
   }
 
-  // 2) 일반 텍스트는 Nominatim 검색
+  // 2) 일반 텍스트 검색: 구글(키 설정 시) → OSM 폴백
   searchTimer = setTimeout(async ()=>{
+    if(window.GMAPS_KEY){
+      // Google Places API (New) Text Search — 한글 완벽 지원
+      try{
+        const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'X-Goog-Api-Key': window.GMAPS_KEY,
+            'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.location'
+          },
+          body: JSON.stringify({
+            textQuery: raw,
+            languageCode:'ko',
+            locationBias:{circle:{center:{latitude:10.2, longitude:103.96}, radius:30000}}
+          })
+        });
+        if(res.ok){
+          const j = await res.json();
+          const list = j.places || [];
+          placeres.innerHTML = list.length
+            ? list.slice(0,6).map(p=>
+                `<div data-lat="${p.location.latitude}" data-lng="${p.location.longitude}">`+
+                `<b>${p.displayName?.text||''}</b><br><span style="color:#889">${p.formattedAddress||''}</span></div>`
+              ).join('')
+            : '<div style="cursor:default;color:#889">검색 결과 없음 — 지도를 직접 탭해도 됩니다</div>';
+          return;
+        }
+      }catch(e){ /* 실패 시 OSM 폴백 */ }
+    }
+    // OSM Nominatim 폴백
     try{
       const q = koToQuery(raw);
       const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=ko'
@@ -708,6 +738,7 @@ const commitBtn = document.getElementById('commitBtn');
 
 function buildDataJs(){
   return '/* 이 파일은 웹 편집기에서 자동 생성됨 */\n'
+    + 'window.GMAPS_KEY = ' + JSON.stringify(window.GMAPS_KEY||null) + ';\n'
     + 'window.GITHUB_REPO = ' + JSON.stringify(window.GITHUB_REPO||null) + ';\n'
     + 'window.GH_TOKEN_ENC = ' + JSON.stringify(window.GH_TOKEN_ENC||null) + ';\n'
     + 'window.DEFAULT_DAYS = ' + JSON.stringify(DAYS, null, 2) + ';\n';
