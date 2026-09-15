@@ -122,7 +122,7 @@ window.DEFAULT_DAYS = [
     "stops": [
       {
         "t": "",
-        "name": "세일링클럼",
+        "name": "세일링클럽",
         "note": "",
         "lat": 10.1153507,
         "lng": 103.9899345,
@@ -215,6 +215,7 @@ window.DEFAULT_DAYS = [
         "t": "",
         "name": "혼똔섬",
         "note": "",
+        "direct": true,
         "lat": 9.9558003,
         "lng": 104.0160918,
         "g": "https://www.google.com/maps/place/H%C3%B2n+Th%C6%A1m+cable+car+station/@9.9541359,104.014858,17z/data=!4m14!1m7!3m6!1s0x31a797e6f38a99d9:0x1cf3fc4f2653bdf3!2z7ISgIOyblOuTnCDtjIztgaw!8m2!3d9.9558003!4d104.0160918!16s%2Fg%2F11jk8z0y2q!3m5!1s0x31a7bd003f9fee4f:0x3cdf342113204fd0!8m2!3d9.9566714!4d104.0176578!16s%2Fg%2F11yg3s_1pq?entry=ttu&g_ep=EgoyMDI2MDkwOS4wIKXMDSoASAFQAw%3D%3D"
@@ -234,6 +235,7 @@ window.DEFAULT_DAYS = [
       {
         "t": "",
         "name": "선셋타운",
+        "direct": true,
         "lat": 10.0269031,
         "lng": 104.0079166,
         "note": "일몰 명소. 밤 '키스 오브 더 씨' 쇼는 애 재우고 어른 교대 관람 가능(리조트 10분).",

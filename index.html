@@ -321,22 +321,31 @@ function drawRoads(di){
   if(!legs) return;
   const d = pxToMeters(4);
   if(routes[di]) routes[di].remove();
-  routes[di] = L.layerGroup(legs.map(coords=>
-    L.polyline(offsetLine(coords, d),
-      {color:DAYS[di].color, weight:4, opacity:.85, lineCap:'round'})
+  routes[di] = L.layerGroup(legs.map(leg=>
+    L.polyline(offsetLine(leg.coords, d),
+      leg.direct
+        ? {color:DAYS[di].color, weight:3, opacity:.8, dashArray:'4 8', lineCap:'round'}
+        : {color:DAYS[di].color, weight:4, opacity:.85, lineCap:'round'})
   ));
   if(activeDay===di) routes[di].addTo(map);
 }
-async function loadRoad(di, pts, color){
+async function loadRoad(di, stops, color){
   try{
     const legs = [];
-    for(let i=0;i<pts.length-1;i++){
-      const wp = `${pts[i][1]},${pts[i][0]};${pts[i+1][1]},${pts[i+1][0]}`;
+    for(let i=0;i<stops.length-1;i++){
+      const a = [+stops[i].lat, +stops[i].lng];
+      const b = [+stops[i+1].lat, +stops[i+1].lng];
+      if(stops[i+1].direct){
+        // 케이블카/보트 등 — 도로 라우팅 없이 직선
+        legs.push({coords:[a,b], direct:true});
+        continue;
+      }
+      const wp = `${a[1]},${a[0]};${b[1]},${b[0]}`;
       const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${wp}?overview=full&geometries=geojson`);
       if(!res.ok) return;
       const j = await res.json();
       if(!j.routes || !j.routes[0]) return;
-      legs.push(j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]));
+      legs.push({coords: j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]), direct:false});
     }
     if(arrows[di]){ arrows[di].remove(); arrows[di]=null; }
     rawLegs[di] = legs;
@@ -353,7 +362,7 @@ function refreshDay(di){
     routes[di] = L.polyline(pts,{color:d.color,weight:3,opacity:.85,dashArray:'6 8',lineCap:'round'});
     arrows[di] = makeArrows(pts, d.color);
     if(activeDay===di){ routes[di].addTo(map); arrows[di].addTo(map); }
-    loadRoad(di, pts, d.color);
+    loadRoad(di, d.stops.filter(s=>!s.nopin), d.color);
   }
 }
 map.on('zoomend', ()=>{ rawLegs.forEach((_,di)=>drawRoads(di)); });
@@ -419,6 +428,7 @@ function renderDay(di){
           ${(!s.nopin && s.g) ? `<a class="gmap" href="${s.g}" target="_blank" rel="noopener" onclick="event.stopPropagation()">구글맵 ↗</a>` : ''}
           <div class="tools">
             <button type="button" data-act="pin">${s.nopin ? '📍 위치 지정' : '📍 위치 제거'}</button>
+            ${s.nopin ? '' : `<button type="button" data-act="direct">${s.direct ? '🚗 도로경로로' : '🚠 직선경로로'}</button>`}
             <button type="button" data-act="up">↑</button>
             <button type="button" data-act="down">↓</button>
             <button type="button" data-act="del">🗑 삭제</button>
@@ -461,6 +471,9 @@ daysEl.addEventListener('click', e=>{
       [arr[si-1],arr[si]] = [arr[si],arr[si-1]]; commit(di);
     } else if(act==='down' && si<arr.length-1){
       [arr[si+1],arr[si]] = [arr[si],arr[si+1]]; commit(di);
+    } else if(act==='direct'){
+      if(s.direct) delete s.direct; else s.direct = true;
+      commit(di);
     } else if(act==='pin'){
       if(s.nopin){
         tool.textContent = '지도 탭 또는 검색…';
