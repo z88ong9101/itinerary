@@ -261,6 +261,14 @@ window.DEFAULT_DAYS = [
     "stops": [
       {
         "t": "",
+        "name": "뉴월드",
+        "note": "",
+        "lat": 10.0393884,
+        "lng": 104.0274382,
+        "g": "https://www.google.com/maps/place/%EB%89%B4%EC%9B%94%EB%93%9C%EB%A6%AC%EC%A1%B0%ED%8A%B8+%ED%91%B8%EA%BE%B8%EC%98%A5/@10.0393884,104.0274382,17z/data=!3m1!4b1!4m9!3m8!1s0x31a79770c1829bcb:0xea9e2010fa762441!5m2!4m1!1i2!8m2!3d10.0393884!4d104.0274382!16s%2Fg%2F11qq43wpl6?entry=ttu&g_ep=EgoyMDI2MDkwOS4wIKXMDSoASAFQAw%3D%3D"
+      },
+      {
+        "t": "",
         "name": "조식",
         "nopin": true,
         "note": ""
